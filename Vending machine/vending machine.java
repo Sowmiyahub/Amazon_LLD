@@ -1,37 +1,7 @@
-/*
-Class Design: Vending Machine (State Design Pattern)
-
-1. VendingMachine
-   - Main class that manages inventory, inserted money, and current state.
-   - Delegates user actions to the current state.
-
-2. VendingMachineState
-   - Interface defining actions: selectProduct, insertMoney, dispense, cancel.
-
-3. IdleState
-   - Waits for the user to select a product or insert money.
-
-4. HasMoneyState
-   - Handles product selection, additional money, dispensing, and cancellation.
-
-5. Product
-   - Stores product ID, name, price, and available quantity.
-
-6. Main Flow
-   - Select product -> Insert money -> Dispense product.
-   - If payment is insufficient, request more money.
-   - If cancelled, refund the inserted money.
-
-Design Pattern: State
-Data Structure: HashMap for inventory
-
-Note:
-   - Cash handling and physical dispensing are simulated.
-   - Production vending machines need hardware integration and concurrency handling.
-*/
 
 import java.util.*;
 
+// 1. State interface
 interface VendingMachineState {
     void selectProduct(VendingMachine machine, String productId);
     void insertMoney(VendingMachine machine, double amount);
@@ -39,8 +9,82 @@ interface VendingMachineState {
     void cancel(VendingMachine machine);
 }
 
+// 2. Payment Strategy interface
+interface PaymentStrategy {
+    boolean pay(double amount);
+}
+
+// 3. Payment implementations
+class CashPayment implements PaymentStrategy {
+    @Override
+    public boolean pay(double amount) {
+        System.out.println("Cash payment accepted: Rs." + amount);
+        return true;
+    }
+}
+
+class UpiPayment implements PaymentStrategy {
+    @Override
+    public boolean pay(double amount) {
+        System.out.println("UPI payment successful: Rs." + amount);
+        return true;
+    }
+}
+
+class CardPayment implements PaymentStrategy {
+    @Override
+    public boolean pay(double amount) {
+        System.out.println("Card payment successful: Rs." + amount);
+        return true;
+    }
+}
+
+// 4. Product
+class Product {
+    private final String id;
+    private final String name;
+    private final double price;
+    private int quantity;
+
+    public Product(String id, String name, double price, int quantity) {
+        if (price <= 0 || quantity < 0) {
+            throw new IllegalArgumentException("Invalid product details");
+        }
+
+        this.id = id;
+        this.name = name;
+        this.price = price;
+        this.quantity = quantity;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public double getPrice() {
+        return price;
+    }
+
+    public int getQuantity() {
+        return quantity;
+    }
+
+    public void reduceQuantity() {
+        if (quantity <= 0) {
+            throw new IllegalStateException("Product out of stock");
+        }
+        quantity--;
+    }
+}
+
+// 5. Vending Machine
 class VendingMachine {
     private final Map<String, Product> inventory = new HashMap<>();
+
     private VendingMachineState currentState;
     private Product selectedProduct;
     private double insertedMoney;
@@ -55,6 +99,10 @@ class VendingMachine {
 
     public Product getProduct(String productId) {
         return inventory.get(productId);
+    }
+
+    public VendingMachineState getState() {
+        return currentState;
     }
 
     public void setState(VendingMachineState state) {
@@ -81,6 +129,7 @@ class VendingMachine {
         insertedMoney = 0;
     }
 
+    // Public operations delegate to the current state
     public void selectProduct(String productId) {
         currentState.selectProduct(this, productId);
     }
@@ -96,9 +145,16 @@ class VendingMachine {
     public void cancel() {
         currentState.cancel(this);
     }
+
+    // Payment Strategy is selected by the caller
+    public boolean makePayment(PaymentStrategy strategy, double amount) {
+        return strategy.pay(amount);
+    }
 }
 
+// 6. Idle state
 class IdleState implements VendingMachineState {
+
     @Override
     public void selectProduct(VendingMachine machine, String productId) {
         Product product = machine.getProduct(productId);
@@ -115,8 +171,9 @@ class IdleState implements VendingMachineState {
 
         machine.setSelectedProduct(product);
         machine.setState(new HasMoneyState());
+
         System.out.println("Selected: " + product.getName()
-                + ". Price: Rs." + product.getPrice());
+                + ", Price: Rs." + product.getPrice());
     }
 
     @Override
@@ -135,10 +192,12 @@ class IdleState implements VendingMachineState {
     }
 }
 
+// 7. Transaction state
 class HasMoneyState implements VendingMachineState {
+
     @Override
     public void selectProduct(VendingMachine machine, String productId) {
-        System.out.println("Please complete or cancel the current transaction.");
+        System.out.println("Complete or cancel the current transaction first.");
     }
 
     @Override
@@ -149,10 +208,13 @@ class HasMoneyState implements VendingMachineState {
         }
 
         machine.addMoney(amount);
+
         System.out.println("Inserted: Rs." + amount);
-        System.out.println("Total inserted: Rs." + machine.getInsertedMoney());
+        System.out.println("Total inserted: Rs."
+                + machine.getInsertedMoney());
     }
 
+    // Cash-based dispensing
     @Override
     public void dispense(VendingMachine machine) {
         Product product = machine.getSelectedProduct();
@@ -163,7 +225,7 @@ class HasMoneyState implements VendingMachineState {
         }
 
         if (product.getQuantity() <= 0) {
-            System.out.println("Product is out of stock.");
+            System.out.println("Product out of stock.");
             cancel(machine);
             return;
         }
@@ -176,18 +238,26 @@ class HasMoneyState implements VendingMachineState {
             return;
         }
 
+        // Cash is the payment method for this transaction
+        boolean paid = machine.makePayment(
+                new CashPayment(), product.getPrice());
+
+        if (!paid) {
+            System.out.println("Payment failed.");
+            return;
+        }
+
         product.reduceQuantity();
 
         double change = inserted - product.getPrice();
+
         System.out.println("Dispensing: " + product.getName());
 
         if (change > 0) {
             System.out.println("Please collect change: Rs." + change);
         }
 
-        machine.resetMoney();
-        machine.setSelectedProduct(null);
-        machine.setState(new IdleState());
+        resetTransaction(machine);
     }
 
     @Override
@@ -195,52 +265,21 @@ class HasMoneyState implements VendingMachineState {
         System.out.println("Transaction cancelled.");
 
         if (machine.getInsertedMoney() > 0) {
-            System.out.println("Refunding: Rs." + machine.getInsertedMoney());
+            System.out.println("Refunding: Rs."
+                    + machine.getInsertedMoney());
         }
 
+        resetTransaction(machine);
+    }
+
+    private void resetTransaction(VendingMachine machine) {
         machine.resetMoney();
         machine.setSelectedProduct(null);
         machine.setState(new IdleState());
     }
 }
 
-class Product {
-    private final String id;
-    private final String name;
-    private final double price;
-    private int quantity;
-
-    public Product(String id, String name, double price, int quantity) {
-        this.id = id;
-        this.name = name;
-        this.price = price;
-        this.quantity = quantity;
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public double getPrice() {
-        return price;
-    }
-
-    public int getQuantity() {
-        return quantity;
-    }
-
-    public void reduceQuantity() {
-        if (quantity <= 0) {
-            throw new IllegalStateException("Product is out of stock");
-        }
-        quantity--;
-    }
-}
-
+// 8. Main
 public class Main {
     public static void main(String[] args) {
         VendingMachine machine = new VendingMachine();
@@ -248,15 +287,30 @@ public class Main {
         machine.addProduct(new Product("P1", "Coke", 40, 5));
         machine.addProduct(new Product("P2", "Chips", 25, 3));
 
+        // Scenario 1: Cash purchase with insufficient money
         machine.selectProduct("P1");
         machine.insertMoney(20);
-        machine.dispense();       // Insufficient money
+        machine.dispense();
 
+        // Insert more money and complete the purchase
         machine.insertMoney(30);
-        machine.dispense();       // Dispenses Coke, returns Rs.10 change
+        machine.dispense();
 
+        // Scenario 2: Cancel and refund
         machine.selectProduct("P2");
         machine.insertMoney(50);
-        machine.cancel();         // Refunds Rs.50
+        machine.cancel();
+
+        // Scenario 3: Digital payment using Strategy Pattern
+        Product chips = machine.getProduct("P2");
+
+        if (chips != null && chips.getQuantity() > 0) {
+            PaymentStrategy payment = new UpiPayment();
+
+            if (machine.makePayment(payment, chips.getPrice())) {
+                chips.reduceQuantity();
+                System.out.println("Dispensing: " + chips.getName());
+            }
+        }
     }
 }
