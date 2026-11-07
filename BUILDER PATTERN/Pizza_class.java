@@ -74,5 +74,25 @@ public class Main{
         System.out.println("Crust of Pizza : " + pizza.getCrust());
         System.out.println("Cheese of Pizza : " + pizza.getCheese());
         System.out.println("Olives of Pizza : " + pizza.getOlives());
+
+        //Pizza 2: Only mandatory fields.
+        Pizza pizza2 = new Pizza.Builder("Medium", "Thick")
+            .cheese("")
+            .olives("")
+            .build();
+        System.out.println("Size of Pizza : " + pizza2.getSize());
+        System.out.println("Crust of Pizza : " + pizza2.getCrust());
+        System.out.println("Cheese of Pizza : " + pizza2.getCheese());
+        System.out.println("Olives of Pizza : " + pizza2.getOlives());
+
+        //Pizza 3: Invalid pizza (empty size).
+        Pizza pizza3 = new Pizza.Builder("", "Thick")
+            .cheese("")
+            .olives("")
+            .build();
+        System.out.println("Size of Pizza : " + pizza3.getSize());
+        System.out.println("Crust of Pizza : " + pizza3.getCrust());
+        System.out.println("Cheese of Pizza : " + pizza3.getCheese());
+        System.out.println("Olives of Pizza : " + pizza3.getOlives());
     }
 }
