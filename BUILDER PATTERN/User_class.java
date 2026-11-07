@@ -20,7 +20,7 @@ class User {
     public static class Builder {
         private final String name;
         private final String email;
-        private int age;~
+        private int age;
         private String address;
 
         public Builder(String name, String email) {
@@ -52,7 +52,6 @@ class User {
         }
     }
 }
-
 
 public class Main {
     public static void main(String[] args) {
