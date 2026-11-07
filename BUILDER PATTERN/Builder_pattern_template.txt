@@ -1,0 +1,32 @@
+class Example {
+
+    // 1. Fields
+
+    // 2. Private constructor
+    private Example(Builder builder) {
+        // Copy Builder values
+    }
+
+    // 3. Getters
+
+    // 4. Static nested Builder
+    public static class Builder {
+
+        // Mandatory fields
+        // Optional fields
+
+        // 5. Builder constructor
+
+        // 6. Optional methods
+        public Builder someField(String value) {
+            this.someField = value;
+            return this;
+        }
+
+        // 7. Build method
+        public Example build() {
+            // Validation
+            return new Example(this);
+        }
+    }
+}
